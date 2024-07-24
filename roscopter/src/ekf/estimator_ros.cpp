@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <rclcpp/logging.hpp>
+#include <roscopter_msgs/msg/detail/state__struct.hpp>
 
 #include "ekf/estimator_ros.hpp"
 #include "ekf/estimator_continuous_discrete.hpp"
@@ -115,6 +116,26 @@ void EstimatorROS::update()
   input_.gps_new = false;
 
   // TODO: create state publisher.
+  
+  roscopter_msgs::msg::State msg = roscopter_msgs::msg::State();
+
+  msg.position[0] = output.pn;
+  msg.position[1] = output.pe;
+  msg.position[2] = output.pd;
+  msg.v_n = output.vn;
+  msg.v_e = output.ve;
+  msg.v_d = output.vd;
+  msg.phi = output.phi;
+  msg.theta = output.theta;
+  msg.psi = output.psi;
+  msg.p = output.p;
+  msg.q = output.q;
+  msg.r = output.r;
+  msg.bx = output.bx;
+  msg.by = output.by;
+  msg.bz = output.bz;
+  
+  vehicle_state_pub_->publish(msg);
 
   // rosplane_msgs::msg::State msg;
   // msg.header.stamp = this->get_clock()->now();
@@ -233,6 +254,8 @@ void EstimatorROS::baroAltCallback(const rosflight_msgs::msg::Barometer::SharedP
   double gravity = params_.get_double("gravity");
   double gate_gain_constant = params_.get_double("baro_measurement_gate");
   double baro_calib_count = params_.get_int("baro_calibration_count");
+
+  new_baro_ = true;
 
   if (armed_first_time_ && !baro_init_) {
     if (baro_count_ < baro_calib_count) {

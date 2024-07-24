@@ -64,6 +64,12 @@ private:
 
   Eigen::VectorXf multirotor_measurement_prediction(const Eigen::VectorXf& state, const Eigen::VectorXf& input);
   std::function<Eigen::VectorXf(const Eigen::VectorXf, const Eigen::VectorXf)> multirotor_measurement_model;
+  
+  Eigen::VectorXf multirotor_fast_measurement_prediction(const Eigen::VectorXf& state, const Eigen::VectorXf& input);
+  std::function<Eigen::VectorXf(const Eigen::VectorXf, const Eigen::VectorXf)> multirotor_fast_measurement_model;
+  
+  Eigen::MatrixXf multirotor_fast_measurement_jacobian(const Eigen::VectorXf& state, const Eigen::VectorXf& input);
+  std::function<Eigen::MatrixXf(const Eigen::VectorXf, const Eigen::VectorXf)> multirotor_fast_measurement_jacobian_model;
 
   Eigen::MatrixXf multirotor_measurement_jacobian(const Eigen::VectorXf& state, const Eigen::VectorXf& input);
   std::function<Eigen::MatrixXf(const Eigen::VectorXf, const Eigen::VectorXf)> multirotor_measurement_jacobian_model;
@@ -74,6 +80,7 @@ private:
   Eigen::MatrixXf Q_; // 12x12 // FIXME: fix the annotated sizes.
   Eigen::MatrixXf Q_g_; // 7x7
   Eigen::MatrixXf R_; // 6x6
+  Eigen::MatrixXf R_fast; // 6x6
 
   // TODO: not used
   float gate_threshold_ = 9.21; // chi2(q = .01, df = 2)

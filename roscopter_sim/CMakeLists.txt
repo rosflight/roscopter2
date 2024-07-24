@@ -87,3 +87,4 @@ install(
 )
 
 ENDIF()
+ament_package()

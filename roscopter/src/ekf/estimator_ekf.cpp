@@ -1,4 +1,5 @@
 #include <functional>
+#include <iostream>
 #include <tuple>
 
 #include "ekf/estimator_ekf.hpp"
@@ -21,6 +22,8 @@ std::tuple<Eigen::MatrixXf, Eigen::VectorXf> EstimatorEKF::measurement_update(Ei
   
   Eigen::VectorXf h = measurement_model(x, inputs);
   Eigen::MatrixXf C = measurement_jacobian(x, inputs);
+
+  std::cout << "in the bowels" << std::endl;
   
   // Find the S_inv to find the Kalman gain.
   Eigen::MatrixXf S_inv = (R + C * P * C.transpose()).inverse();
@@ -28,6 +31,8 @@ std::tuple<Eigen::MatrixXf, Eigen::VectorXf> EstimatorEKF::measurement_update(Ei
   Eigen::MatrixXf L = P * C.transpose() * S_inv;
   // Use a temp to increase readablility.
   Eigen::MatrixXf temp = Eigen::MatrixXf::Identity(x.size(), x.size()) - L * C;
+
+  std::cout << "the final stretch" << std::endl;
   
   // Adjust the covariance with new information.
   P = temp * P * temp.transpose() + L * R * L.transpose();

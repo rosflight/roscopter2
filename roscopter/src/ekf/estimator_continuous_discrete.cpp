@@ -30,7 +30,8 @@ EstimatorContinuousDiscrete::EstimatorContinuousDiscrete()
     , P_(Eigen::MatrixXf::Identity(12, 12))
     , Q_(Eigen::MatrixXf::Identity(12, 12))
     , Q_g_(Eigen::MatrixXf::Identity(6, 6))
-    , R_(Eigen::MatrixXf::Zero(6, 6))
+    , R_(Eigen::MatrixXf::Zero(2, 2))
+    , R_fast(Eigen::MatrixXf::Zero(1, 1))
 {
 
   bind_functions(); // TODO: Document what the _models are.
@@ -117,10 +118,12 @@ void EstimatorContinuousDiscrete::update_measurement_model_parameters()
 
   R_(0, 0) = powf(sigma_n_gps, 2);
   R_(1, 1) = powf(sigma_e_gps, 2);
-  R_(2, 2) = powf(sigma_static_press, 2);
-  R_(3, 3) = powf(sigma_Vg_gps, 2);
-  R_(4, 4) = powf(sigma_course_gps, 2);
-  R_(5, 5) = powf(sigma_mag, 2);
+  // R_(2, 2) = powf(sigma_static_press, 2);
+  // R_(3, 3) = powf(sigma_Vg_gps, 2);
+  // R_(4, 4) = powf(sigma_course_gps, 2);
+  // R_(5, 5) = powf(sigma_mag, 2);
+  
+  R_fast(0,0) = powf(sigma_static_press,2);
 
   alpha_ = exp(-lpf_a * Ts);
   alpha1_ = exp(-lpf_a1 * Ts);
@@ -144,9 +147,9 @@ void EstimatorContinuousDiscrete::estimate(const Input & input, Output & output)
   lpf_gyro_y_ = alpha_ * lpf_gyro_y_ + (1 - alpha_) * input.gyro_y;
   lpf_gyro_z_ = alpha_ * lpf_gyro_z_ + (1 - alpha_) * input.gyro_z;
 
-  float phat = lpf_gyro_x_;
-  float qhat = lpf_gyro_y_;
-  float rhat = lpf_gyro_z_;
+  float phat = input.gyro_x;
+  float qhat = input.gyro_y;
+  float rhat = input.gyro_z;
 
   // Use magenetometer measures to produce a heading measurement.
   
@@ -196,10 +199,24 @@ void EstimatorContinuousDiscrete::estimate(const Input & input, Output & output)
   Eigen::VectorXf imu_measurements;
   imu_measurements = Eigen::VectorXf::Zero(6);
   imu_measurements << input.accel_x, input.accel_y, input.accel_z, input.gyro_x, input.gyro_y, input.gyro_z;
+  
+  std::cout << "xhat before propagation:\n";
+  int count = 0;
+  for (auto state : xhat_){
+    std::cout << "xhat(" << count << "): " << state << "\n";
+    count++;
+  }
 
   // ESTIMATION
   // Prediction step
   std::tie(P_, xhat_) = propagate_model(xhat_, multirotor_dynamics_model, multirotor_jacobian_model, imu_measurements, multirotor_input_jacobian_model, P_, Q_, Q_g_, Ts);
+  
+  std::cout << "xhat after propagation:\n";
+  count = 0;
+  for (auto state : xhat_){
+    std::cout << "xhat(" << count << "): " << state << "\n";
+    count++;
+  }
   
     // Check wrapping of the heading and course.
   xhat_(8) = wrap_within_180(0.0, xhat_(8));
@@ -207,22 +224,42 @@ void EstimatorContinuousDiscrete::estimate(const Input & input, Output & output)
     RCLCPP_WARN(this->get_logger(), "Psi estimate not wrapped from -pi to pi");
     xhat_(8) = 0;
   }
+  
+  Eigen::VectorXf _(1); // FIXME: FIX THIS!
+
+  Eigen::Vector<float, 1> y_fast;
+  y_fast << input.static_pres;
+
+  // only update when have new baro and mag.
+  if (false) {
+    std::tie(P_, xhat_) = measurement_update(xhat_, _, multirotor_fast_measurement_model, y_fast, multirotor_fast_measurement_jacobian_model, R_fast, P_);
+    new_baro_ = false;
+  }
 
   // Measurement updates.
   // Only update if new GPS information is available.
   if (input.gps_new) {
-    Eigen::VectorXf _(1); // FIXME: FIX THIS!
+    std::cout << "xhat before measures:\n";
+    count = 0;
+    for (auto state : xhat_){
+      std::cout << "xhat(" << count << "): " << state << "\n";
+      count++;
+    }
 
     //wrap course measurement
     float gps_course = fmodf(input.gps_course, radians(360.0f));
     gps_course = wrap_within_180(xhat_(3), gps_course);
     
     // Measurements for the postional states.
-    Eigen::Vector<float, 6> y_pos;
-    y_pos << input.gps_n, input.gps_e, input.static_pres, input.gps_Vg, gps_course, mag_true_heading;
+    Eigen::Vector<float, 2> y_pos;
+    y_pos << input.gps_n, input.gps_e; //, input.static_pres, input.gps_Vg, gps_course, mag_true_heading;
+    //
+    std::cout << "HERE" << std::endl;
     
     // Update the state and covariance with based on the predicted and actual measurements.
     std::tie(P_, xhat_) = measurement_update(xhat_, _, multirotor_measurement_model, y_pos, multirotor_measurement_jacobian_model, R_, P_);
+
+    // xhat_(9) = xhat_(10) = xhat_(11) = 0.0;
 
     if (xhat_(0) > gps_n_lim || xhat_(0) < -gps_n_lim) {
       RCLCPP_WARN(this->get_logger(), "gps n limit reached");
@@ -231,6 +268,13 @@ void EstimatorContinuousDiscrete::estimate(const Input & input, Output & output)
     if (xhat_(1) > gps_e_lim || xhat_(1) < -gps_e_lim) {
       RCLCPP_WARN(this->get_logger(), "gps e limit reached");
       xhat_(1) = input.gps_e;
+    }
+    
+    std::cout << "xhat after measures:\n";
+    count = 0;
+    for (auto state : xhat_){
+      std::cout << "xhat(" << count << "): " << state << "\n";
+      count++;
     }
   }
 
@@ -293,6 +337,8 @@ void EstimatorContinuousDiscrete::estimate(const Input & input, Output & output)
   output.ve = vehat;
   output.vd = vdhat;
   output.p = phat;
+  output.q = qhat;
+  output.r = rhat;
   output.phi = phihat;
   output.theta = thetahat;
   output.psi = psihat;
@@ -363,6 +409,9 @@ Eigen::VectorXf EstimatorContinuousDiscrete::multirotor_dynamics(const Eigen::Ve
              0.0, sinf(phi)/cosf(theta), cosf(phi)/cosf(theta);
 
   Eigen::Vector3f euler_angles_dot = S_theta*(y_gyro - biases);
+
+  std::cout << "euler_angles_dot: \n";
+  std::cout << euler_angles_dot << "\n";
   
   Eigen::VectorXf f;
   f = Eigen::VectorXf::Zero(12);
@@ -486,6 +535,19 @@ Eigen::MatrixXf EstimatorContinuousDiscrete::multirotor_input_jacobian(const Eig
   return G;
 }
 
+Eigen::VectorXf EstimatorContinuousDiscrete::multirotor_fast_measurement_prediction(const Eigen::VectorXf& state, const Eigen::VectorXf& input)
+{
+  float rho = params_.get_double("rho");
+  float gravity = params_.get_double("gravity");
+
+  Eigen::VectorXf h = Eigen::VectorXf::Zero(1);
+
+  // Static pressure
+  h(0) = -rho*gravity*state(2);
+
+  return h;
+}
+
 Eigen::VectorXf EstimatorContinuousDiscrete::multirotor_measurement_prediction(const Eigen::VectorXf& state, const Eigen::VectorXf& input)
 {
   float rho = params_.get_double("rho");
@@ -494,7 +556,7 @@ Eigen::VectorXf EstimatorContinuousDiscrete::multirotor_measurement_prediction(c
   float v_n = state(3);
   float v_e = state(4);
   
-  Eigen::VectorXf h = Eigen::VectorXf::Zero(6);
+  Eigen::VectorXf h = Eigen::VectorXf::Zero(2);
 
   // GPS north
   h(0) = state(0);
@@ -502,21 +564,34 @@ Eigen::VectorXf EstimatorContinuousDiscrete::multirotor_measurement_prediction(c
   // GPS east
   h(1) = state(1);
   
-  // Static pressure
-  h(2) = -rho*gravity*state(2);
-
-  // GPS ground speed
-  h(3) = sqrt(v_n*v_n + v_e*v_e);
-  
-  // GPS course
-  h(4) = state(8);
-  
-  // Magnetometer
-  h(5) = state(8);
+  // // Static pressure
+  // h(2) = -rho*gravity*state(2);
+  //
+  // // GPS ground speed
+  // h(3) = sqrt(v_n*v_n + v_e*v_e);
+  // 
+  // // GPS course
+  // h(4) = state(8);
+  // 
+  // // Magnetometer
+  // h(5) = state(8);
   
   // To add a new measurement, simply use the state and any input you need as another entry to h. Be sure to update the measurement jacobian C.
    
   return h;
+}
+
+Eigen::MatrixXf EstimatorContinuousDiscrete::multirotor_fast_measurement_jacobian(const Eigen::VectorXf& state, const Eigen::VectorXf& input)
+{
+  float rho = params_.get_double("rho");
+  float gravity = params_.get_double("gravity");
+  
+  Eigen::MatrixXf C = Eigen::MatrixXf::Zero(1,12);
+
+  // Static pressure
+  C(0,0) = -rho*gravity;
+
+  return C;
 }
 
 Eigen::MatrixXf EstimatorContinuousDiscrete::multirotor_measurement_jacobian(const Eigen::VectorXf& state, const Eigen::VectorXf& input)
@@ -527,7 +602,7 @@ Eigen::MatrixXf EstimatorContinuousDiscrete::multirotor_measurement_jacobian(con
   float v_n = state(3);
   float v_e = state(4);
 
-  Eigen::MatrixXf C = Eigen::MatrixXf::Zero(6,12);
+  Eigen::MatrixXf C = Eigen::MatrixXf::Zero(2,12);
   
   // GPS north
   C(0,0) = 1;
@@ -535,18 +610,18 @@ Eigen::MatrixXf EstimatorContinuousDiscrete::multirotor_measurement_jacobian(con
   // GPS east
   C(1,1) = 1;
   
-  // Static pressure TODO: Move this and the magenetometer to a seperate update. 
-  C(2,2) = rho*gravity;
-
-  // GPS ground speed
-  C(3,3) = v_n / sqrt(v_n*v_n + v_e*v_e);
-  C(3,4) = v_e / sqrt(v_n*v_n + v_e*v_e);
-  
-  // GPS course
-  C(4,8) = 1;
-
-  // Magnetometer
-  C(5,8) = 1;
+  // // Static pressure TODO: Move this and the magenetometer to a seperate update. 
+  // C(2,2) = -rho*gravity;
+  //
+  // // GPS ground speed
+  // C(3,3) = v_n / sqrt(v_n*v_n + v_e*v_e);
+  // C(3,4) = v_e / sqrt(v_n*v_n + v_e*v_e);
+  // 
+  // // GPS course
+  // C(4,8) = 1;
+  //
+  // // Magnetometer
+  // C(5,8) = 1;
 
   // To add a new measurement use the inputs and the state to add another row to the matrix C. Be sure to update the measurment prediction vector h.
 
@@ -568,11 +643,11 @@ void EstimatorContinuousDiscrete::declare_parameters()
   params_.declare_double("gps_n_lim", 10000.);
   params_.declare_double("gps_e_lim", 10000.);
 
-  params_.declare_double("roll_process_noise", 0.0001);   // Radians?, should be already squared
-  params_.declare_double("pitch_process_noise", 0.0000001);   // Radians?, already squared
+  params_.declare_double("roll_process_noise", 0.00000001);   // Radians?, should be already squared
+  params_.declare_double("pitch_process_noise", 0.00000001);   // Radians?, already squared
   params_.declare_double("gyro_process_noise", 0.13);   // Deg, not squared
-  params_.declare_double("accel_process_noise", 0.13);   // m/s^2 not squared
-  params_.declare_double("pos_process_noise", 0.1);   // already squared
+  params_.declare_double("accel_process_noise", 024525);   // m/s^2 not squared
+  params_.declare_double("pos_process_noise", 0.0000001);   // already squared
 
   params_.declare_double("pos_n_initial_cov", 0.03);
   params_.declare_double("pos_e_initial_cov", 0.03);
@@ -603,7 +678,9 @@ void EstimatorContinuousDiscrete::bind_functions()
   multirotor_jacobian_model = std::bind(&EstimatorContinuousDiscrete::multirotor_jacobian, this, std::placeholders::_1, std::placeholders::_2);
   multirotor_input_jacobian_model = std::bind(&EstimatorContinuousDiscrete::multirotor_input_jacobian, this, std::placeholders::_1, std::placeholders::_2);
   multirotor_measurement_model = std::bind(&EstimatorContinuousDiscrete::multirotor_measurement_prediction, this, std::placeholders::_1, std::placeholders::_2);
+  multirotor_fast_measurement_model = std::bind(&EstimatorContinuousDiscrete::multirotor_fast_measurement_prediction, this, std::placeholders::_1, std::placeholders::_2);
   multirotor_measurement_jacobian_model = std::bind(&EstimatorContinuousDiscrete::multirotor_measurement_jacobian, this, std::placeholders::_1, std::placeholders::_2);
+  multirotor_fast_measurement_jacobian_model = std::bind(&EstimatorContinuousDiscrete::multirotor_fast_measurement_jacobian, this, std::placeholders::_1, std::placeholders::_2);
 
 }
 

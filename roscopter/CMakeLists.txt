@@ -101,22 +101,6 @@ install(
 #   TARGETS ekf_node
 #   DESTINATION lib/${PROJECT_NAME})
 
-# Param Manager
-add_library(param_manager
-  include/param_manager/param_manager.hpp
-  src/param_manager/param_manager.cpp
-)
-ament_target_dependencies(param_manager rclcpp)
-ament_export_targets(param_manager HAS_LIBRARY_TARGET)
-install(DIRECTORY include/param_manager DESTINATION include)
-install(TARGETS param_manager
-  EXPORT param_manager
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
-  INCLUDES DESTINATION include
-)
-
 set_source_files_properties(geomag.c PROPERTIES LANGUAGE C)
 # Estimator
 add_executable(roscopter_estimator

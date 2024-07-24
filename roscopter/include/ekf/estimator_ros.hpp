@@ -91,6 +91,7 @@ protected:
   };
 
   bool baro_init_; /**< Initial barometric pressure */
+  bool new_baro_ = false;
 
   virtual void estimate(const Input & input,
                         Output & output) = 0;
