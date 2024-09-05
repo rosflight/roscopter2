@@ -142,7 +142,17 @@ install(
   TARGETS trajectory_follower
   DESTINATION lib/${PROJECT_NAME})
 
-
+# Path Manager
+add_executable(path_manager
+  src/navigation/path_manager_ros.cpp
+  src/navigation/path_manager.cpp)
+ament_target_dependencies(path_manager rclcpp rclpy roscopter_msgs)
+target_link_libraries(path_manager ${ament_LIBRARIES} param_manager)
+install(
+  TARGETS path_manager
+  DESTINATION lib/${PROJECT_NAME})
+  
+  
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

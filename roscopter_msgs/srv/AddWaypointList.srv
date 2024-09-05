@@ -1,0 +1,7 @@
+# Adds a list of waypoints to the path manager
+
+roscopter_msgs/Waypoint[] wp_list   # List of waypoints to add
+bool clear_previous                 # Flag to clear previous waypoints or append new ones
+---
+bool success
+string message

@@ -31,10 +31,12 @@ set(msg_files
   "msg/Bool.msg"
   "msg/State.msg"
   "msg/TrajectoryCommand.msg"
+  "msg/Waypoint.msg"
 )
 
 set(srv_files
   "srv/AddWaypoint.srv"
+  "srv/AddWaypointList.srv"
   "srv/RemoveWaypoint.srv"
   "srv/SetWaypointsFromFile.srv"
   "srv/ListWaypoints.srv"
