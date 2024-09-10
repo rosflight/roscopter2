@@ -7,7 +7,7 @@ using std::placeholders::_2;
 namespace roscopter
 {
 
-PathManagerROS::PathManagerROS() : Node("path_manager"), params(this)
+PathManagerROS::PathManagerROS() : Node("path_manager"), params(this), params_initialized_(false)
 {
   // Instantiate publishers and subscribers
   state_sub_ = this->create_subscription<roscopter_msgs::msg::State>("estimated_state", 1, std::bind(&PathManagerROS::state_callback, this, _1));
@@ -16,17 +16,22 @@ PathManagerROS::PathManagerROS() : Node("path_manager"), params(this)
   // Instantiate service servers
   single_waypoint_srv_ = this->create_service<roscopter_msgs::srv::AddWaypoint>("path_manager/add_waypoint", std::bind(&PathManagerROS::single_waypoint_callback, this, _1, _2));
   waypoint_list_srv_ = this->create_service<roscopter_msgs::srv::AddWaypointList>("path_manager/add_waypoint_list", std::bind(&PathManagerROS::set_waypoint_list, this, _1, _2));
+  clear_waypoints_srv_ = this->create_service<std_srvs::srv::Trigger>("path_manager/clear_waypoints", std::bind(&PathManagerROS::clear_waypoints, this, _1, _2));
 
   // Register parameter callback
   parameter_callback_handle_ = this->add_on_set_parameters_callback(std::bind(&PathManagerROS::parameters_callback, this, _1));
   
   declare_params();
   params.set_parameters();
+
+  params_initialized_ = true;
+  set_timer();
 }
 
 void PathManagerROS::declare_params()
 {
   // Declare params here needed in this node
+  params.declare_double("path_update_frequency", 50.0);
 }
 
 rcl_interfaces::msg::SetParametersResult PathManagerROS::parameters_callback(const std::vector<rclcpp::Parameter> & parameters)
@@ -43,19 +48,38 @@ rcl_interfaces::msg::SetParametersResult PathManagerROS::parameters_callback(con
     result.reason = "success";
   }
 
+
+  if (params_initialized_ && success) {
+    std::chrono::microseconds curr_period = std::chrono::microseconds(
+      static_cast<long long>(1.0 / params.get_double("path_update_frequency") * 1'000'000));
+    if (timer_period_ != curr_period) {
+      timer_->cancel();
+      set_timer();
+    }
+  }
+
   return result;
+}
+
+void PathManagerROS::set_timer()
+{
+  timer_period_ = std::chrono::microseconds(
+    static_cast<long long>(1.0 / params.get_double("path_update_frequency") * 1'000'000));
+
+  timer_ = this->create_wall_timer(timer_period_,
+                                   std::bind(&PathManagerROS::run, this));
+}
+
+void PathManagerROS::run()
+{
+  roscopter_msgs::msg::TrajectoryCommand output_cmd = manage_path();
+
+  publish_command(output_cmd);
 }
 
 void PathManagerROS::state_callback(const roscopter_msgs::msg::State &msg)
 {
   xhat_ = msg;
-
-  double now = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9;
-  double dt = compute_dt(now);
-
-  roscopter_msgs::msg::TrajectoryCommand output_cmd = manage_path(dt);
-
-  publish_command(output_cmd);
 }
 
 double PathManagerROS::compute_dt(double now)
@@ -107,6 +131,16 @@ bool PathManagerROS::set_waypoint_list(const roscopter_msgs::srv::AddWaypointLis
 
   res->success = true;
 
+  return true;
+}
+
+bool PathManagerROS::clear_waypoints(const std_srvs::srv::Trigger::Request::SharedPtr &req,
+                                     const std_srvs::srv::Trigger::Response::SharedPtr &res)
+{
+  waypoint_list_.clear();
+  
+  res->success = true;
+  res->message = "Waypoints cleared!";
   return true;
 }
 

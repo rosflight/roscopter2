@@ -26,6 +26,7 @@ find_package(rclpy REQUIRED)
 find_package(roscopter_msgs REQUIRED)
 find_package(rosflight_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
@@ -146,7 +147,7 @@ install(
 add_executable(path_manager
   src/navigation/path_manager_ros.cpp
   src/navigation/path_manager.cpp)
-ament_target_dependencies(path_manager rclcpp rclpy roscopter_msgs)
+ament_target_dependencies(path_manager rclcpp rclpy roscopter_msgs std_srvs)
 target_link_libraries(path_manager ${ament_LIBRARIES} param_manager)
 install(
   TARGETS path_manager

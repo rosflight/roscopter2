@@ -19,8 +19,8 @@ public:
 
 private:
   // Methods
-  roscopter_msgs::msg::TrajectoryCommand manage_path(double dt) override;
-  void rk4_step(double dt);
+  roscopter_msgs::msg::TrajectoryCommand manage_path() override;
+  void rk4_step();
   Eigen::Vector2f F(Eigen::Vector2f sig);
 
   // Member variables
