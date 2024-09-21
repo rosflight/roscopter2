@@ -18,7 +18,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(Eigen3 REQUIRED)
-find_package(yaml-cpp REQUIRED)
+# find_package(yaml-cpp REQUIRED)
 find_package(inertial_sense QUIET)
 find_package(rosidl_default_generators REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -32,6 +32,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
 
 if (${inertial_sense_FOUND})
     message(WARNING "found inertial sense library")
@@ -67,6 +68,7 @@ include_directories(
   include
   ${EIGEN3_INCLUDE_DIRS} 
   ${ament_INCLUDE_DIRS}
+  ${YAML_CPP_INCLUDEDIR}
   )
 
 
@@ -88,25 +90,25 @@ install(TARGETS param_manager
   INCLUDES DESTINATION include
 )
 
-add_library(ekf
-  src/ekf/state.cpp
-  src/ekf/dynamics.cpp
-  src/ekf/ekf.cpp
-  src/ekf/meas.cpp
-  src/ekf/log.cpp)
-target_include_directories(ekf PUBLIC include lib/geometry/include)
-target_link_libraries(ekf ${YAML_CPP_LIBRARIES} stdc++fs)
+# add_library(ekf
+#   src/ekf/state.cpp
+#   src/ekf/dynamics.cpp
+#   src/ekf/ekf.cpp
+#   src/ekf/meas.cpp
+#   src/ekf/log.cpp)
+# target_include_directories(ekf PUBLIC include lib/geometry/include)
+# target_link_libraries(ekf ${YAML_CPP_LIBRARIES} stdc++fs)
 
-add_library(ekf_ros src/ekf/ekf_ros.cpp)
-target_link_libraries(ekf_ros ekf ${ament_LIBRARIES})
-ament_target_dependencies(ekf_ros rclcpp rclpy roscopter_msgs rosflight_msgs std_msgs nav_msgs sensor_msgs EIGEN3 geometry_msgs)
+# add_library(ekf_ros src/ekf/ekf_ros.cpp)
+# target_link_libraries(ekf_ros ekf ${ament_LIBRARIES})
+# ament_target_dependencies(ekf_ros rclcpp rclpy roscopter_msgs rosflight_msgs std_msgs nav_msgs sensor_msgs EIGEN3 geometry_msgs)
 
-add_executable(ekf_node src/ekf/ekf_node.cpp)
-target_link_libraries(ekf_node ekf_ros ${ament_LIBRARIES})
-ament_target_dependencies(ekf_node rclcpp rclpy roscopter_msgs rosflight_msgs std_msgs nav_msgs sensor_msgs EIGEN3 geometry_msgs)
-install(
-  TARGETS ekf_node
-  DESTINATION lib/${PROJECT_NAME})
+# add_executable(ekf_node src/ekf/ekf_node.cpp)
+# target_link_libraries(ekf_node ekf_ros ${ament_LIBRARIES})
+# ament_target_dependencies(ekf_node rclcpp rclpy roscopter_msgs rosflight_msgs std_msgs nav_msgs sensor_msgs EIGEN3 geometry_msgs)
+# install(
+#   TARGETS ekf_node
+#   DESTINATION lib/${PROJECT_NAME})
 
 # External attitude transcriber
 add_executable(ext_att_transcriber
@@ -151,6 +153,15 @@ ament_target_dependencies(path_manager rclcpp rclpy roscopter_msgs std_srvs)
 target_link_libraries(path_manager ${ament_LIBRARIES} param_manager)
 install(
   TARGETS path_manager
+  DESTINATION lib/${PROJECT_NAME})
+
+# Path Planner
+add_executable(path_planner
+  src/navigation/path_planner.cpp)
+ament_target_dependencies(path_planner rclcpp roscopter_msgs std_srvs rosflight_msgs)
+target_link_libraries(path_planner ${ament_LIBRARIES} param_manager ${YAML_CPP_LIBRARIES})
+install(
+  TARGETS path_planner
   DESTINATION lib/${PROJECT_NAME})
   
   

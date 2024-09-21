@@ -9,14 +9,20 @@ namespace roscopter
 
 PathManagerROS::PathManagerROS() : Node("path_manager"), params(this), params_initialized_(false)
 {
+  rclcpp::QoS qos_transient_local_10_(10);
+  qos_transient_local_10_.transient_local();
+
   // Instantiate publishers and subscribers
   state_sub_ = this->create_subscription<roscopter_msgs::msg::State>("estimated_state", 1, std::bind(&PathManagerROS::state_callback, this, _1));
+  wp_sub_ = this->create_subscription<roscopter_msgs::msg::Waypoint>("waypoints", qos_transient_local_10_, std::bind(&PathManagerROS::single_waypoint_callback, this, _1));
   cmd_pub_ = this->create_publisher<roscopter_msgs::msg::TrajectoryCommand>("trajectory_command", 1);
   
   // Instantiate service servers
-  single_waypoint_srv_ = this->create_service<roscopter_msgs::srv::AddWaypoint>("path_manager/add_waypoint", std::bind(&PathManagerROS::single_waypoint_callback, this, _1, _2));
-  waypoint_list_srv_ = this->create_service<roscopter_msgs::srv::AddWaypointList>("path_manager/add_waypoint_list", std::bind(&PathManagerROS::set_waypoint_list, this, _1, _2));
+  // single_waypoint_srv_ = this->create_service<roscopter_msgs::srv::AddWaypoint>("path_manager/add_waypoint", std::bind(&PathManagerROS::single_waypoint_callback, this, _1, _2));
+  // waypoint_list_srv_ = this->create_service<roscopter_msgs::srv::AddWaypointList>("path_manager/add_waypoint_list", std::bind(&PathManagerROS::set_waypoint_list, this, _1, _2));
   clear_waypoints_srv_ = this->create_service<std_srvs::srv::Trigger>("path_manager/clear_waypoints", std::bind(&PathManagerROS::clear_waypoints, this, _1, _2));
+  print_waypoint_service_ = this->create_service<std_srvs::srv::Trigger>(
+    "print_waypoints", std::bind(&PathManagerROS::print_path, this, _1, _2));
 
   // Register parameter callback
   parameter_callback_handle_ = this->add_on_set_parameters_callback(std::bind(&PathManagerROS::parameters_callback, this, _1));
@@ -98,46 +104,42 @@ double PathManagerROS::compute_dt(double now)
   return dt;
 }
 
-bool PathManagerROS::single_waypoint_callback(const roscopter_msgs::srv::AddWaypoint::Request::SharedPtr &req,
-                                              const roscopter_msgs::srv::AddWaypoint::Response::SharedPtr &res)
+void PathManagerROS::single_waypoint_callback(const roscopter_msgs::msg::Waypoint &msg)
 {
-  waypoint_list_.push_back(req->wp);
-
-  res->success = true;
-return true;
+  waypoint_list_.push_back(msg);
 }
 
-bool PathManagerROS::set_waypoint_list(const roscopter_msgs::srv::AddWaypointList::Request::SharedPtr &req,
-                                       const roscopter_msgs::srv::AddWaypointList::Response::SharedPtr &res)
-{
-  if (req->clear_previous) {
-    waypoint_list_.clear();
-  }
+// bool PathManagerROS::set_waypoint_list(const roscopter_msgs::srv::AddWaypointList::Request::SharedPtr &req,
+//                                        const roscopter_msgs::srv::AddWaypointList::Response::SharedPtr &res)
+// {
+//   if (req->clear_previous) {
+//     waypoint_list_.clear();
+//   }
 
-  // Add the waypoints to the list of waypoints
-  for (auto wp : req->wp_list) {
-    waypoint_list_.push_back(wp);
-  }
+//   // Add the waypoints to the list of waypoints
+//   for (auto wp : req->wp_list) {
+//     waypoint_list_.push_back(wp);
+//   }
 
-  if (waypoint_list_.size() == 1) {
-    // If there is only one waypoint in the list, add the current state as a waypoint
-    roscopter_msgs::msg::Waypoint self_wp;
-    self_wp.w = xhat_.position;
-    self_wp.speed = xhat_.vg;
-    self_wp.psi = xhat_.psi;
+//   if (waypoint_list_.size() == 1) {
+//     // If there is only one waypoint in the list, add the current state as a waypoint
+//     roscopter_msgs::msg::Waypoint self_wp;
+//     self_wp.w = xhat_.position;
+//     self_wp.speed = xhat_.vg;
+//     self_wp.psi = xhat_.psi;
 
-    waypoint_list_.insert(waypoint_list_.begin(), self_wp);
-  }
+//     waypoint_list_.insert(waypoint_list_.begin(), self_wp);
+//   }
 
-  res->success = true;
+//   res->success = true;
 
-  return true;
-}
+//   return true;
+// }
 
 bool PathManagerROS::clear_waypoints(const std_srvs::srv::Trigger::Request::SharedPtr &req,
                                      const std_srvs::srv::Trigger::Response::SharedPtr &res)
 {
-  waypoint_list_.clear();
+  clear_waypoints_internally();
   
   res->success = true;
   res->message = "Waypoints cleared!";
@@ -148,6 +150,39 @@ void PathManagerROS::publish_command(roscopter_msgs::msg::TrajectoryCommand &com
 {
   command.header.stamp = this->get_clock()->now();
   cmd_pub_->publish(command);
+}
+
+bool PathManagerROS::print_path(const std_srvs::srv::Trigger::Request::SharedPtr & req,
+                             const std_srvs::srv::Trigger::Response::SharedPtr & res)
+{
+  std::stringstream output;
+
+  output << "Printing waypoints...";
+
+  for (int i = 0; i < (int) waypoint_list_.size(); ++i) {
+    roscopter_msgs::msg::Waypoint wp = waypoint_list_[i];
+    output << std::endl << "----- WAYPOINT " << i << " -----" << std::endl;
+    output << "Type (HOLD/GOTO): " << (int)wp.type << std::endl;
+
+    if (wp.use_lla) {
+      output << "Position (LLA): [" << wp.w[0] << ", " << wp.w[1] << ", " << wp.w[2] << "]"
+             << std::endl;
+    } else {
+      output << "Position (NED, meters): [" << wp.w[0] << ", " << wp.w[1] << ", " << wp.w[2] << "]"
+             << std::endl;
+    }
+    output << "Speed: " << wp.speed << std::endl;
+    output << "Psi: " << wp.psi << std::endl;
+    output << "Hold Seconds: " << wp.hold_seconds << std::endl;
+    output << "Hold Indefinitely: " << wp.hold_indefinitely;
+  }
+
+  // Print to info log stream
+  RCLCPP_INFO_STREAM(this->get_logger(), output.str());
+
+  res->success = true;
+
+  return true;
 }
 
 }   // namespace roscopter

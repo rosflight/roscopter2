@@ -69,13 +69,13 @@
 
         # Trajectory controller gains
         u_n_kp: 0.5
-        u_n_ki: 0.1
+        u_n_ki: 0.001
         u_n_kd: 0.5
         u_e_kp: 0.5
-        u_e_ki: 0.1
+        u_e_ki: 0.001
         u_e_kd: 0.5
         u_d_kp: 4.0
-        u_d_ki: 0.1
+        u_d_ki: 0.001
         u_d_kd: 15.0
 
         # Miscellanous

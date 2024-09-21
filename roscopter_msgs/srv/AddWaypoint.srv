@@ -1,5 +1,7 @@
 # Add a Waypoint to the waypoint list
 
 roscopter_msgs/Waypoint wp
+bool publish_now
 ---
 bool success
+string message

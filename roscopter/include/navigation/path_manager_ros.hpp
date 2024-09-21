@@ -37,12 +37,14 @@ protected:
 private:
   // Publishers and Subscribers
   rclcpp::Subscription<roscopter_msgs::msg::State>::SharedPtr state_sub_;
+  rclcpp::Subscription<roscopter_msgs::msg::Waypoint>::SharedPtr wp_sub_;
   rclcpp::Publisher<roscopter_msgs::msg::TrajectoryCommand>::SharedPtr cmd_pub_;
 
   // Service servers
-  rclcpp::Service<roscopter_msgs::srv::AddWaypoint>::SharedPtr single_waypoint_srv_;
-  rclcpp::Service<roscopter_msgs::srv::AddWaypointList>::SharedPtr waypoint_list_srv_;
+  // rclcpp::Service<roscopter_msgs::srv::AddWaypoint>::SharedPtr single_waypoint_srv_;
+  // rclcpp::Service<roscopter_msgs::srv::AddWaypointList>::SharedPtr waypoint_list_srv_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr clear_waypoints_srv_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr print_waypoint_service_;
 
   // Timer
   rclcpp::TimerBase::SharedPtr timer_;
@@ -54,16 +56,17 @@ private:
   double compute_dt(double now);
   void state_callback(const roscopter_msgs::msg::State &msg);
   void publish_command(roscopter_msgs::msg::TrajectoryCommand &command);
-  bool single_waypoint_callback(const roscopter_msgs::srv::AddWaypoint::Request::SharedPtr &req,
-                                const roscopter_msgs::srv::AddWaypoint::Response::SharedPtr &res);
-  bool set_waypoint_list(const roscopter_msgs::srv::AddWaypointList::Request::SharedPtr &req,
-                         const roscopter_msgs::srv::AddWaypointList::Response::SharedPtr &res);
+  void single_waypoint_callback(const roscopter_msgs::msg::Waypoint &msg);
   bool clear_waypoints(const std_srvs::srv::Trigger::Request::SharedPtr &req,
                        const std_srvs::srv::Trigger::Response::SharedPtr &res);
+  bool print_path(const std_srvs::srv::Trigger::Request::SharedPtr & req,
+                  const std_srvs::srv::Trigger::Response::SharedPtr & res);
+
   void run();
 
   // Virtual functions
   virtual roscopter_msgs::msg::TrajectoryCommand manage_path() = 0;
+  virtual void clear_waypoints_internally() = 0;
 
   /**
    * @brief Declares parameters with ROS2 and loads from a parameter file, if given
