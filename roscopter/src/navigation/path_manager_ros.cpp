@@ -18,11 +18,9 @@ PathManagerROS::PathManagerROS() : Node("path_manager"), params(this), params_in
   cmd_pub_ = this->create_publisher<roscopter_msgs::msg::TrajectoryCommand>("trajectory_command", 1);
   
   // Instantiate service servers
-  // single_waypoint_srv_ = this->create_service<roscopter_msgs::srv::AddWaypoint>("path_manager/add_waypoint", std::bind(&PathManagerROS::single_waypoint_callback, this, _1, _2));
-  // waypoint_list_srv_ = this->create_service<roscopter_msgs::srv::AddWaypointList>("path_manager/add_waypoint_list", std::bind(&PathManagerROS::set_waypoint_list, this, _1, _2));
   clear_waypoints_srv_ = this->create_service<std_srvs::srv::Trigger>("path_manager/clear_waypoints", std::bind(&PathManagerROS::clear_waypoints, this, _1, _2));
   print_waypoint_service_ = this->create_service<std_srvs::srv::Trigger>(
-    "print_waypoints", std::bind(&PathManagerROS::print_path, this, _1, _2));
+    "path_manager/print_waypoints", std::bind(&PathManagerROS::print_path, this, _1, _2));
 
   // Register parameter callback
   parameter_callback_handle_ = this->add_on_set_parameters_callback(std::bind(&PathManagerROS::parameters_callback, this, _1));

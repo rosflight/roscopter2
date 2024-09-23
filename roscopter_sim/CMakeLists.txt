@@ -94,6 +94,5 @@ install(TARGETS
         gazebo_truth_publisher
         DESTINATION lib/${PROJECT_NAME})
 
-ENDIF()
-
 ament_package()
+ENDIF()

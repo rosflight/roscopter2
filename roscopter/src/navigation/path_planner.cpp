@@ -22,19 +22,19 @@ PathPlanner::PathPlanner()
     this->create_publisher<roscopter_msgs::msg::Waypoint>("waypoints", qos_transient_local_10_);
 
   next_waypoint_service_ = this->create_service<std_srvs::srv::Trigger>(
-    "publish_next_waypoint", std::bind(&PathPlanner::publish_next_waypoint, this, _1, _2));
+    "path_planner/publish_next_waypoint", std::bind(&PathPlanner::publish_next_waypoint, this, _1, _2));
 
   add_waypoint_service_ = this->create_service<roscopter_msgs::srv::AddWaypoint>(
-    "add_waypoint", std::bind(&PathPlanner::update_path, this, _1, _2));
+    "path_planner/add_waypoint", std::bind(&PathPlanner::update_path, this, _1, _2));
 
   clear_waypoint_service_ = this->create_service<std_srvs::srv::Trigger>(
-    "clear_waypoints", std::bind(&PathPlanner::clear_path_callback, this, _1, _2));
+    "path_planner/clear_waypoints", std::bind(&PathPlanner::clear_path_callback, this, _1, _2));
 
   print_waypoint_service_ = this->create_service<std_srvs::srv::Trigger>(
-    "print_waypoints", std::bind(&PathPlanner::print_path, this, _1, _2));
+    "path_planner/print_waypoints", std::bind(&PathPlanner::print_path, this, _1, _2));
 
   load_mission_service_ = this->create_service<rosflight_msgs::srv::ParamFile>(
-    "load_mission_from_file", std::bind(&PathPlanner::load_mission, this, _1, _2));
+    "path_planner/load_mission_from_file", std::bind(&PathPlanner::load_mission, this, _1, _2));
 
   state_subscription_ = this->create_subscription<roscopter_msgs::msg::State>(
     "estimated_state", 10, std::bind(&PathPlanner::state_callback, this, _1));
@@ -310,7 +310,7 @@ PathPlanner::parametersCallback(const std::vector<rclcpp::Parameter> & parameter
 {
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = false;
-  result.reason = "One of the parameters given is not a parameter of the controller node.";
+  result.reason = "One of the parameters given is not a parameter of the path_planner node.";
 
   // Set parameters in the param_manager object
   bool success = params_.set_parameters_callback(parameters);
