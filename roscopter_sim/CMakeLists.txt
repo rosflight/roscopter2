@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 project(roscopter_sim)
 
-find_package(gazebo QUIET)
-IF(NOT gazebo_FOUND)
-  message(STATUS "Gazebo not found. Not building roscopter_sim.")
-ELSE()
 set(CMAKE_CXX_STANDARD 11)
 if (NOT CMAKE_BUILD_TYPE)
     # Options: Debug, Release, MinSizeRel, RelWithDebInfo
@@ -39,8 +35,6 @@ find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
-find_package(gazebo_ros REQUIRED)
-find_package(gazebo_plugins REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 # catkin_package(
@@ -54,7 +48,6 @@ include_directories(include
   ${rclcpp_INCLUDE_DIRS}
   ${SDFormat_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
-  ${GAZEBO_INCLUDE_DIRS}
 )
 link_directories(${GAZEBO_LIBRARY_DIRS})
 
@@ -85,14 +78,6 @@ link_directories(${GAZEBO_LIBRARY_DIRS})
 #   DESTINATION lib/${PROJECT_NAME}
 #   # LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 # )
-
-add_executable(gazebo_truth_publisher
-  src/state_transcription_node.cpp
-)
-ament_target_dependencies(gazebo_truth_publisher roscopter_msgs rclcpp nav_msgs)
-install(TARGETS
-        gazebo_truth_publisher
-        DESTINATION lib/${PROJECT_NAME})
 
 add_executable(mocap_translation
   src/mocap_translation_node.cpp
