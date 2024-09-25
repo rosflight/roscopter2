@@ -107,8 +107,10 @@ protected:
   double init_lon_ = 0.0;                 /**< Initial longitude in degrees */
   float init_alt_ = 0.0;                  /**< Initial altitude in meters above MSL  */
   float init_static_;                     /**< Initial static pressure (mbar)  */
+  float true_heading_ = 0.0;
 private:
   rclcpp::Publisher<roscopter_msgs::msg::State>::SharedPtr vehicle_state_pub_;
+  rclcpp::Subscription<roscopter_msgs::msg::State>::SharedPtr truth_sub_;
   rclcpp::Subscription<rosflight_msgs::msg::GNSSFull>::SharedPtr gnss_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<rosflight_msgs::msg::Barometer>::SharedPtr baro_sub_;
@@ -118,6 +120,7 @@ private:
   std::string param_filepath_ = "estimator_params.yaml";
 
   void update();
+  void truthCallback(const roscopter_msgs::msg::State::SharedPtr msg);
   void gnssCallback(const rosflight_msgs::msg::GNSSFull::SharedPtr msg);
   void imuCallback(const sensor_msgs::msg::Imu::SharedPtr msg);
   void baroAltCallback(const rosflight_msgs::msg::Barometer::SharedPtr msg);

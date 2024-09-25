@@ -29,7 +29,7 @@ EstimatorContinuousDiscrete::EstimatorContinuousDiscrete()
     , Q_(Eigen::MatrixXf::Identity(13, 13))
     , Q_g_(Eigen::MatrixXf::Identity(6, 6))
     , R_(Eigen::MatrixXf::Zero(5, 5))
-    , R_fast(Eigen::MatrixXf::Zero(4, 4))
+    , R_fast(Eigen::MatrixXf::Zero(2, 2))
 {
   // This binds the various functions for the measurement and dynamic models and their jacobians,
   // to a reference that is efficient to pass to the functions used to do the estimation.
@@ -114,27 +114,26 @@ void EstimatorContinuousDiscrete::fast_measurement_update_step(const Input& inpu
   calc_mag_field_properties(input); // Runs only once, finds inclination_ and declination_.
   
   // Only update when have new baro and new mag.
-  if (!new_baro_ || !mag_init_) {
+  if (!new_baro_) {
     return; // ASK: Should we split the magnetometer?
   }
 
-  bool convert_to_gauss = params_.get_bool("convert_to_gauss");
+
+  // bool convert_to_gauss = params_.get_bool("convert_to_gauss");
 
   lpf_static_ = alpha1_ * lpf_static_ + (1 - alpha1_) * input.static_pres; // ASK: Should we nix this?
 
-  Eigen::Vector3f mag_readings;
-  mag_readings << input.mag_x, input.mag_y, input.mag_z;
-  if (convert_to_gauss) {
-    mag_readings *= 10'000.;
-  }
+  // Eigen::Vector3f mag_readings;
+  // mag_readings << input.mag_x, input.mag_y, input.mag_z;
+  // if (convert_to_gauss) {
+  //   mag_readings *= 10'000.;
+  // }
   
-  Eigen::Vector<float, 4> y_fast;
-  y_fast << lpf_static_, mag_readings/mag_readings.norm();
-  
+  Eigen::Vector<float, 2> y_fast;
+  y_fast << lpf_static_, true_heading_;
 
-  Eigen::Vector<float, 1> mag_info;
-  mag_info << radians(declination_);
-  std::tie(P_, xhat_) = measurement_update(xhat_, mag_info, multirotor_fast_measurement_model,
+  Eigen::Vector<float, 1> _;
+  std::tie(P_, xhat_) = measurement_update(xhat_, _, multirotor_fast_measurement_model,
                                            y_fast, multirotor_fast_measurement_jacobian_model,
                                            R_fast, P_);
 
@@ -233,25 +232,25 @@ Eigen::VectorXf EstimatorContinuousDiscrete::multirotor_fast_measurement_predict
   float rho = params_.get_double("rho");
   float gravity = params_.get_double("gravity");
 
-  float declination = input(0);
+  // float declination = input(0);
+  //
+  // float inclination = xhat_(12);
+  // 
+  // Eigen::Vector3f Theta = state.block<3,1>(6,0);
 
-  float inclination = xhat_(12);
-  
-  Eigen::Vector3f Theta = state.block<3,1>(6,0);
+  Eigen::VectorXf h = Eigen::VectorXf::Zero(2);
 
-  Eigen::VectorXf h = Eigen::VectorXf::Zero(4);
-
-  Eigen::Vector3f inertial_mag_readings = calculate_inertial_magnetic_field(declination, inclination);
-
-  // Rotate the magnetometer readings into the body frame.
-  Eigen::Vector3f predicted_mag_readings = R(Theta)*inertial_mag_readings;
-  predicted_mag_readings /= predicted_mag_readings.norm();
+  // Eigen::Vector3f inertial_mag_readings = calculate_inertial_magnetic_field(declination, inclination);
+  //
+  // // Rotate the magnetometer readings into the body frame.
+  // Eigen::Vector3f predicted_mag_readings = R(Theta)*inertial_mag_readings;
+  // predicted_mag_readings /= predicted_mag_readings.norm();
   
   // Predicted static pressure measurements
   h(0) = -rho*gravity*state(2);
 
   // Predicted magnetometer measurement in each body axis.
-  h.block<3,1>(1,0) = predicted_mag_readings;
+  h(1) = state(8);
 
   return h;
 }
@@ -260,23 +259,24 @@ Eigen::MatrixXf EstimatorContinuousDiscrete::multirotor_fast_measurement_jacobia
 {
   float rho = params_.get_double("rho");
   float gravity = params_.get_double("gravity");
-  
-  Eigen::Vector3f Theta = state.block<3,1>(6,0);
+  // 
+  // Eigen::Vector3f Theta = state.block<3,1>(6,0);
+  //
+  // float declination = input(0);
+  //
+  // float inclination = -xhat_(12);
+  //
+  // Eigen::Matrix<float, 3, 4> R_theta_mag_jac = del_R_Theta_inc_y_mag_del_Theta(Theta, inclination, declination);
 
-  float declination = input(0);
-
-  float inclination = -xhat_(12);
-
-  Eigen::Matrix<float, 3, 4> R_theta_mag_jac = del_R_Theta_inc_y_mag_del_Theta(Theta, inclination, declination);
-
-  Eigen::MatrixXf C = Eigen::MatrixXf::Zero(4,13);
+  Eigen::MatrixXf C = Eigen::MatrixXf::Zero(2,13);
 
   // Static pressure
   C(0,2) = -rho*gravity;
+  C(1,8) = 1;
   
   // Magnetometer update
-  C.block<3,3>(1,6) = R_theta_mag_jac.block<3,3>(0,0);
-  C.block<3,1>(1,12) = R_theta_mag_jac.col(3);
+  // C.block<3,3>(1,6) = R_theta_mag_jac.block<3,3>(0,0);
+  // C.block<3,1>(1,12) = R_theta_mag_jac.col(3);
   return C;
 }
 
@@ -649,8 +649,6 @@ void EstimatorContinuousDiscrete::update_measurement_model_parameters()
   
   R_fast(0,0) = powf(sigma_static_press,2);
   R_fast(1,1) = powf(sigma_mag,2);
-  R_fast(2,2) = powf(sigma_mag,2);
-  R_fast(3,3) = powf(sigma_mag,2);// TODO: consider modifying just the bottom one.
   
   // Calculate low pass filter alpha values.
   alpha_ = exp(-lpf_a * Ts);

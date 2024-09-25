@@ -11,6 +11,8 @@ EstimatorROS::EstimatorROS()
 {
   vehicle_state_pub_ = this->create_publisher<roscopter_msgs::msg::State>("estimated_state", 10);
 
+  truth_sub_ = this->create_subscription<roscopter_msgs::msg::State>(
+    "state", 10, std::bind(&EstimatorROS::truthCallback, this, std::placeholders::_1));
   gnss_sub_ = this->create_subscription<rosflight_msgs::msg::GNSSFull>(
     gnss_fix_topic_, 10, std::bind(&EstimatorROS::gnssCallback, this, std::placeholders::_1));
   imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
@@ -132,6 +134,11 @@ void EstimatorROS::update()
   msg.inclination = output.inclination;
   
   vehicle_state_pub_->publish(msg);
+}
+
+void EstimatorROS::truthCallback(const roscopter_msgs::msg::State::SharedPtr msg)
+{
+  true_heading_ = msg->psi;
 }
 
 void EstimatorROS::gnssCallback(const rosflight_msgs::msg::GNSSFull::SharedPtr msg)

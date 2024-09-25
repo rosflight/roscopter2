@@ -94,6 +94,13 @@ install(TARGETS
         gazebo_truth_publisher
         DESTINATION lib/${PROJECT_NAME})
 
+add_executable(mocap_translation
+  src/mocap_translation_node.cpp
+)
+ament_target_dependencies(mocap_translation roscopter_msgs rclcpp nav_msgs geometry_msgs sensor_msgs)
+install(TARGETS
+        mocap_translation
+        DESTINATION lib/${PROJECT_NAME})
 ENDIF()
 
 ament_package()
