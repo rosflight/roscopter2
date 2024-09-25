@@ -19,7 +19,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(yaml-cpp REQUIRED)
+# find_package(yaml-cpp REQUIRED)
 find_package(inertial_sense QUIET)
 find_package(rosidl_default_generators REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -27,11 +27,13 @@ find_package(rclpy REQUIRED)
 find_package(roscopter_msgs REQUIRED)
 find_package(rosflight_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
 
 if (${inertial_sense_FOUND})
     message(WARNING "found inertial sense library")
@@ -67,6 +69,7 @@ include_directories(
   include
   ${EIGEN3_INCLUDE_DIRS} 
   ${ament_INCLUDE_DIRS}
+  ${YAML_CPP_INCLUDEDIR}
   )
 
 
@@ -144,6 +147,25 @@ install(
   TARGETS trajectory_follower
   DESTINATION lib/${PROJECT_NAME})
 
+# Path Manager
+add_executable(path_manager
+  src/navigation/path_manager_ros.cpp
+  src/navigation/path_manager.cpp)
+ament_target_dependencies(path_manager rclcpp rclpy roscopter_msgs std_srvs)
+target_link_libraries(path_manager ${ament_LIBRARIES} param_manager)
+install(
+  TARGETS path_manager
+  DESTINATION lib/${PROJECT_NAME})
+
+# Path Planner
+add_executable(path_planner
+  src/navigation/path_planner.cpp)
+ament_target_dependencies(path_planner rclcpp roscopter_msgs std_srvs rosflight_msgs)
+target_link_libraries(path_planner ${ament_LIBRARIES} param_manager ${YAML_CPP_LIBRARIES})
+install(
+  TARGETS path_planner
+  DESTINATION lib/${PROJECT_NAME}) 
+  
 if(BUILD_TESTING)
 
   find_package(ament_cmake_gtest REQUIRED)

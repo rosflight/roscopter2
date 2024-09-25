@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.8)
-project(roscopter_msgs)
+project(roscopter_gcs)
 
+# Default to C99
 if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
 endif()
+# Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
@@ -16,46 +18,26 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
-find_package(builtin_interfaces REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(roscopter_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
-### SET MSG AND SRV FILE DEFINITIONS ### 
+ament_export_dependencies(rclcpp visualization_msgs)
 
-set(msg_files
-  "msg/ControllerCommand.msg"
-  "msg/ControllerInternals.msg"
-  "msg/PoseEuler.msg"
-  "msg/Bool.msg"
-  "msg/State.msg"
-  "msg/TrajectoryCommand.msg"
-  "msg/Waypoint.msg"
-)
+install(DIRECTORY launch config resource DESTINATION share/${PROJECT_NAME})
 
-set(srv_files
-  "srv/AddWaypoint.srv"
-  "srv/AddWaypointList.srv"
-  "srv/RemoveWaypoint.srv"
-  "srv/SetWaypointsFromFile.srv"
-  "srv/ListWaypoints.srv"
-  "srv/ClearWaypoints.srv"
-  "srv/Hold.srv"
-  "srv/Release.srv"
-  "srv/Land.srv"
-  "srv/Fly.srv"
-  "srv/ReturnToBase.srv"
-)
-
-rosidl_generate_interfaces(${PROJECT_NAME}
-  ${msg_files}
-  ${srv_files}
-  DEPENDENCIES
-  builtin_interfaces
-  geometry_msgs
-  std_msgs
-  )
+# Publisher node executable
+add_executable(rviz_waypoint_publisher
+               src/rviz_waypoint_publisher.cpp)
+ament_target_dependencies(rviz_waypoint_publisher roscopter_msgs visualization_msgs rclcpp tf2 tf2_ros geometry_msgs)
+install(TARGETS 
+  rviz_waypoint_publisher
+  DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -68,8 +50,5 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
-
-
-ament_export_dependencies(rosidl_default_runtime)
 
 ament_package()

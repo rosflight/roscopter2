@@ -101,6 +101,5 @@ ament_target_dependencies(mocap_translation roscopter_msgs rclcpp nav_msgs geome
 install(TARGETS
         mocap_translation
         DESTINATION lib/${PROJECT_NAME})
-ENDIF()
-
 ament_package()
+ENDIF() 
