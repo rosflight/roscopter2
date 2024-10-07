@@ -9,10 +9,10 @@ namespace roscopter
 ControllerROS::ControllerROS() : Node("controller"), params(this)
 {
   // Set up Publisher and Subscribers
-  state_sub_ = this->create_subscription<roscopter_msgs::msg::State>("estimated_state", 1, std::bind(&ControllerROS::state_callback, this, _1));
-  cmd_sub_ = this->create_subscription<roscopter_msgs::msg::ControllerCommand>("high_level_command", 1, std::bind(&ControllerROS::cmd_callback, this, _1));
-  status_sub_ = this->create_subscription<rosflight_msgs::msg::Status>("status", 1, std::bind(&ControllerROS::status_callback, this, _1));
-  command_pub_ = this->create_publisher<rosflight_msgs::msg::Command>("command", 1);
+  state_sub_ = this->create_subscription<roscopter_msgs::msg::State>("estimated_state", 10, std::bind(&ControllerROS::state_callback, this, _1));
+  cmd_sub_ = this->create_subscription<roscopter_msgs::msg::ControllerCommand>("high_level_command", 10, std::bind(&ControllerROS::cmd_callback, this, _1));
+  status_sub_ = this->create_subscription<rosflight_msgs::msg::Status>("status", 10, std::bind(&ControllerROS::status_callback, this, _1));
+  command_pub_ = this->create_publisher<rosflight_msgs::msg::Command>("command", 10);
 
   // Make sure the input command is initialized correctly to avoid sending commands before the controller receives control setpoints
   input_cmd_.cmd_valid = false;

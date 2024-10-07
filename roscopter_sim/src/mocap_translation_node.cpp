@@ -31,11 +31,14 @@ public:
 
     publisher_ = this->create_publisher<roscopter_msgs::msg::State>("state", 10);
     // TODO: add GPS, baro and mag spoofed sensors.
+    mocap_rpy_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("mocap_rpy", 10);
 
-    float frequency = 100.0;
+    float frequency = 400.0;
     
     auto update_period_ = std::chrono::microseconds(static_cast<long long>(1.0 / frequency * 1'000'000));
     update_timer_ = this->create_wall_timer(update_period_, std::bind(&mocap_translation::publish_truth, this));
+
+    this->declare_parameter("alpha", 0.95);
   }
 
 private:
@@ -44,12 +47,34 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr firmware_estimator_sub_;
 
   rclcpp::Publisher<State>::SharedPtr publisher_;
+  rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr mocap_rpy_publisher_;
   
   rclcpp::TimerBase::SharedPtr update_timer_;
 
   void mocap_truth_callback(const geometry_msgs::msg::PoseStamped & msg)
   {
     mocap_truth_ = msg;
+    
+    Eigen::Quaternionf q;
+    q.w() = mocap_truth_.pose.orientation.w;
+    q.x() = mocap_truth_.pose.orientation.x;
+    q.y() = mocap_truth_.pose.orientation.z;
+    q.z() = -mocap_truth_.pose.orientation.y;
+
+    Eigen::Vector3f euler;
+    euler(0) = atan2(2.0 * (q.w() * q.x() + q.y() * q.z()),
+                     pow(q.w(), 2) + pow(q.z(), 2) - pow(q.x(), 2) - pow(q.y(), 2));
+    euler(1) = asin(2.0 * (q.w() * q.y() - q.x() * q.z()));
+    euler(2) = atan2(2.0 * (q.w() * q.z() + q.x() * q.y()),
+                     pow(q.w(), 2) + pow(q.x(), 2) - pow(q.y(), 2) - pow(q.z(), 2));
+
+    auto rpy_msg = geometry_msgs::msg::Vector3Stamped();
+
+    rpy_msg.vector.set__x(euler(0));
+    rpy_msg.vector.set__y(euler(1));
+    rpy_msg.vector.set__z(euler(2));
+
+    mocap_rpy_publisher_->publish(rpy_msg);
   }
 
   void firmware_estimator_callback(const geometry_msgs::msg::Vector3Stamped & msg)
@@ -75,6 +100,8 @@ private:
   geometry_msgs::msg::Vector3Stamped rpy_estimated_;
   geometry_msgs::msg::PoseStamped mocap_truth_;
 
+  double prev_time = 0.0;
+
   void publish_truth()
   {
 
@@ -90,17 +117,20 @@ private:
     state.position[0] = mocap_truth_.pose.position.x;
     state.position[1] = mocap_truth_.pose.position.z;
     state.position[2] = -mocap_truth_.pose.position.y;
+    
+    if (p_n_prev != state.position[0]) {
+	    double dt = state.header.stamp.sec + state.header.stamp.nanosec * 1e-9 - prev_time;
+	    double alpha = this->get_parameter("alpha").as_double();
+	    prev_time = state.header.stamp.sec + state.header.stamp.nanosec * 1e-9;
 
-    v_n = state.position[0] - p_n_prev; 
-    v_n /= 2.0;
-    v_e = state.position[1] - p_e_prev; 
-    v_e /= 2.0;
-    v_d = state.position[2] - p_d_prev; 
-    v_d /= 2.0;
-
-    p_n_prev = state.position[0];
-    p_e_prev = state.position[1];
-    p_d_prev = state.position[2];
+	    v_n = alpha*v_n + (1-alpha)*(state.position[0] - p_n_prev)/dt; 
+	    v_e = alpha*v_e + (1-alpha)*(state.position[1] - p_e_prev)/dt; 
+	    v_d = alpha*v_d + (1-alpha)*(state.position[2] - p_d_prev)/dt; 
+    
+	    p_n_prev = state.position[0];
+	    p_e_prev = state.position[1];
+	    p_d_prev = state.position[2];
+    }
 
     Eigen::Quaternionf q;
     q.w() = mocap_truth_.pose.orientation.w;
@@ -174,3 +204,4 @@ int main(int argc, char * argv[])
   rclcpp::shutdown();
   return 0;
 }
+
