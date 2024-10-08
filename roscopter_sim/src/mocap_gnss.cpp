@@ -39,6 +39,8 @@ public:
     horizontal_pos_stdev_ = 0.21;
     vertical_pos_stdev_ = 0.4;
 
+    gnss_velocity_stdev_ = 0.01;
+
     k_gnss_ = 1.0/1100;
 
     init_lat_ = 40.245964;
@@ -58,6 +60,7 @@ private:
   float k_gnss_;
   float horizontal_pos_stdev_;
   float vertical_pos_stdev_;
+  float gnss_velocity_stdev_;
   
   float frequency;
 
@@ -118,9 +121,13 @@ private:
 
   void publish_gnss()
   {
-    gnss_full_msg_.vel_n = int(v_n / (1/frequency) * 1e3);
-    gnss_full_msg_.vel_e = int(v_e / (1/frequency) * 1e3);
-    gnss_full_msg_.vel_d = -int(v_d / (1/frequency) * 1e3);
+    std::random_device rd;
+    std::mt19937 noise_generator(rd());
+    std::normal_distribution<double> normal_distr(0.0, 1.0);
+
+    gnss_full_msg_.vel_n = int((v_n / (1/frequency) + gnss_velocity_stdev_ * normal_distr(noise_generator))* 1e3);
+    gnss_full_msg_.vel_e = int((v_e / (1/frequency)  + gnss_velocity_stdev_ * normal_distr(noise_generator))* 1e3);
+    gnss_full_msg_.vel_d = -int((v_d / (1/frequency)  + gnss_velocity_stdev_ * normal_distr(noise_generator))* 1e3);
     publisher_->publish(gnss_full_msg_);
     v_n = gnss_full_msg_.vel_n;
     p_n_prev = mocap_truth_.pose.position.x;
