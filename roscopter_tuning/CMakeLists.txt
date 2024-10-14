@@ -1,11 +1,10 @@
+set(CMAKE_CXX_STANDARD 14)
 cmake_minimum_required(VERSION 3.8)
 project(roscopter_tuning)
 
-# Default to C99
 if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
 endif()
-# Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
@@ -36,13 +35,19 @@ find_package(rosflight_msgs REQUIRED)
 ament_export_dependencies(rclcpp rclpy)
 ament_export_include_directories(include)
 
-#install(DIRECTORY originalFiles DESTINATION share/${PROJECT_NAME}/)
-include_directories(  #use this if you need .h files for include statements.  The include will need to have the directories where each .h is respectively.
-  include
-  ${EIGEN3_INCLUDE_DIRS}
+install(
+  DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
 )
 
-install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}/)
+install(
+  DIRECTORY resources
+  DESTINATION share/${PROJECT_NAME}
+)
+
+include_directories(
+  include
+  ${ament_INCLUDE_DIRS})
 
 ### START OF EXECUTABLES ###
 

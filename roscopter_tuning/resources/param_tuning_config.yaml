@@ -1,4 +1,4 @@
-# Configuration file for param_tuning rqt plugin.
+# Configuration file to set up the parameter tuning interface.
 #
 # {Name of parameter group}:
 #   node: '/{ROS_node_name}'

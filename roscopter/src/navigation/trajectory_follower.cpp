@@ -38,6 +38,7 @@ void TrajectoryFollower::declare_params()
   params.declare_double("max_roll", 30.0);
   params.declare_double("max_pitch", 30.0);
   params.declare_double("max_descend_accel", 1.0);
+  params.declare_double("down_command_window", 3.0);
 }
 
 void TrajectoryFollower::update_gains()
@@ -159,6 +160,13 @@ double TrajectoryFollower::down_control(double pd_cmd, double pd_dot_cmd, double
   double C_d = params.get_double("C_d");
   double g = params.get_double("gravity");
   double min_accel_z = params.get_double("max_descend_accel") * g;
+  double max_d_cmd = params.get_double("down_command_window");
+
+  // Saturate the down command (only when positive) to the maximum down command window.
+  // This helps to ensure that the copter maintains a controllable down velocity when descending
+  if ((pd_cmd - xhat_.position[2]) > max_d_cmd) {
+    pd_cmd = max_d_cmd + xhat_.position[2];
+  }
 
   // Down control effort - Eq. 14.34. Note the negative velocity passed to the PID object
   double pd_dot_tilde = pd_dot_cmd - xhat_.v_d;
