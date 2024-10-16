@@ -78,6 +78,7 @@ link_directories(${GAZEBO_LIBRARY_DIRS})
 #   DESTINATION lib/${PROJECT_NAME}
 #   # LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 # )
+set_source_files_properties(geomag.c PROPERTIES LANGUAGE C)
 
 add_executable(mocap_translation
   src/mocap_translation_node.cpp
@@ -90,9 +91,20 @@ install(TARGETS
 add_executable(mocap_gnss
   src/mocap_gnss.cpp
 )
-ament_target_dependencies(mocap_gnss roscopter_msgs rclcpp nav_msgs geometry_msgs sensor_msgs rosflight_msgs)
+ament_target_dependencies(mocap_gnss roscopter_msgs rclcpp nav_msgs geometry_msgs sensor_msgs rosflight_msgs Eigen3)
+target_include_directories(mocap_gnss PUBLIC include)
 install(TARGETS
         mocap_gnss
+        DESTINATION lib/${PROJECT_NAME})
+
+add_executable(mocap_mag
+  src/mocap_magnetometer.cpp
+  src/utils/geomag.c
+)
+ament_target_dependencies(mocap_mag roscopter_msgs rclcpp nav_msgs geometry_msgs sensor_msgs rosflight_msgs Eigen3)
+target_include_directories(mocap_mag PUBLIC include)
+install(TARGETS
+        mocap_mag
         DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

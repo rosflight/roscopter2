@@ -26,7 +26,7 @@ public:
     mocap_subscription_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         "vrpn_mocap/ROScopter/pose", qos_profile, std::bind(&mocap_gnss::mocap_callback, this, _1)); // z is east, x is north, y is up
 
-    publisher_ = this->create_publisher<rosflight_msgs::msg::GNSSFull>("gnss_full", 10);
+    publisher_ = this->create_publisher<rosflight_msgs::msg::GNSSFull>("/mocap_gnss_full", 10);
     // TODO: add GPS, baro and mag spoofed sensors.
 
     frequency = 10.0; // TODO: make a param
@@ -35,6 +35,8 @@ public:
     update_timer_ = this->create_wall_timer(update_period_, std::bind(&mocap_gnss::publish_gnss, this));
 
     gnss_full_msg_ = rosflight_msgs::msg::GNSSFull();
+    gnss_full_msg_.fix_type = 3; // have full fix.
+    gnss_full_msg_.num_sat = 10;
 
     horizontal_pos_stdev_ = 0.21;
     vertical_pos_stdev_ = 0.4;
@@ -124,6 +126,8 @@ private:
     std::random_device rd;
     std::mt19937 noise_generator(rd());
     std::normal_distribution<double> normal_distr(0.0, 1.0);
+
+    gnss_full_msg_.header.stamp = this->get_clock()->now();
 
     gnss_full_msg_.vel_n = int((v_n / (1/frequency) + gnss_velocity_stdev_ * normal_distr(noise_generator))* 1e3);
     gnss_full_msg_.vel_e = int((v_e / (1/frequency)  + gnss_velocity_stdev_ * normal_distr(noise_generator))* 1e3);
