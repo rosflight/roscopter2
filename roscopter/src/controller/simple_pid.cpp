@@ -120,7 +120,6 @@ double SimplePID::compute_pid(double desired, double current, double dt, double 
 
   // Integrator anti-windup
   double u_sat = saturate(u, min_, max_);
-  // TODO: Do we need the second check here?
   if (u != u_sat && std::fabs(i_term) > fabs(u_sat - p_term + d_term)) {
     // If we are at the saturation limits, then make sure the integrator doesn't get
     // bigger if it won't do anything (except take longer to unwind).  Just set it to the
