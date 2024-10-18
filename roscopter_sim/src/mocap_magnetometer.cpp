@@ -97,7 +97,7 @@ private:
   
   rclcpp::TimerBase::SharedPtr update_timer_;
 
-  Eigen::Vector3d mag_gauss_markov_eta_;
+  Eigen::Vector3f mag_gauss_markov_eta_;
 
   float k_mag_;
   float mag_stdev_;
@@ -119,9 +119,9 @@ private:
 
     std::random_device rd;
     std::mt19937 noise_generator(rd());
-    std::normal_distribution<double> normal_distr(0.0, 1.0);
+    std::normal_distribution<float> normal_distr(0.0, 1.0);
     
-    Eigen::Vector3d mag_noise;
+    Eigen::Vector3f mag_noise;
     mag_noise << mag_stdev_ * normal_distr(noise_generator),
                  mag_stdev_ * normal_distr(noise_generator),
                    mag_stdev_ * normal_distr(noise_generator);
@@ -150,14 +150,7 @@ private:
     // GazeboPose I_to_B = GZ_COMPAT_GET_WORLD_POSE(link_);
     auto R = mocap_pose.toRotationMatrix();
 
-    Eigen::Vector3f current_mag_readings = R.transpose()*inertial_mag_readings / 50'000.0;
-
-    // GazeboVector noise;
-    // GZ_COMPAT_SET_X(noise, mag_stdev_ * normal_distribution_(noise_generator_));
-    // GZ_COMPAT_SET_Y(noise, mag_stdev_ * normal_distribution_(noise_generator_));
-    // GZ_COMPAT_SET_Z(noise, mag_stdev_ * normal_distribution_(noise_generator_));
-    // mag_gauss_markov_eta_ = std::exp(-k_mag_*T_s) * mag_gauss_markov_eta_ + T_s*noise;
-
+    Eigen::Vector3f current_mag_readings = (R.transpose()*inertial_mag_readings + mag_gauss_markov_eta_) / 50'000.0;
 
     mag_msg_.header.stamp = this->get_clock()->now();
 
