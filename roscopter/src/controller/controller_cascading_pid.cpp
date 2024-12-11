@@ -564,17 +564,19 @@ void ControllerCascadingPID::pass_to_firmware_controller(roscopter_msgs::msg::Co
   output_cmd_.ignore = rosflight_msgs::msg::Command::IGNORE_NONE;
 
   // Saturate the commanded output
-  output_cmd_.x = saturate(input_cmd.cmd1, max_x, -max_x);
-  output_cmd_.y = saturate(input_cmd.cmd2, max_y, -max_y);
-  output_cmd_.z = saturate(input_cmd.cmd3, max_z, -max_z);
-  output_cmd_.f = saturate(input_cmd.cmd4, max_f, min_f);
+  output_cmd_.qx = saturate(input_cmd.cmd1, max_x, -max_x);
+  output_cmd_.qy = saturate(input_cmd.cmd2, max_y, -max_y);
+  output_cmd_.qz = saturate(input_cmd.cmd3, max_z, -max_z);
+  output_cmd_.fz = saturate(input_cmd.cmd4, max_f, min_f);
+  output_cmd_.fx = 0.0;
+  output_cmd_.fy = 0.0;
 
   // Check to see if we are above the minimum attitude altitude
   if (abs(xhat_.position[2]) < min_altitude_for_attitude_ctrl)
   {
-    output_cmd_.x = 0.;
-    output_cmd_.y = 0.;
-    output_cmd_.z = 0.;
+    output_cmd_.qx = 0.;
+    output_cmd_.qy = 0.;
+    output_cmd_.qz = 0.;
   }
 }
 
