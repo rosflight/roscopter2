@@ -76,7 +76,7 @@ RvizWaypointPublisher::RvizWaypointPublisher()
   aircraft_.ns = "vehicle";
   aircraft_.id = 0;
   aircraft_.type = visualization_msgs::msg::Marker::MESH_RESOURCE;
-  aircraft_.mesh_resource = "package://roscopter_gcs/resource/skyhunter.dae";
+  aircraft_.mesh_resource = "package://rosflight_sim/resources/multirotor.dae";
   aircraft_.mesh_use_embedded_materials = false;
   aircraft_.action = visualization_msgs::msg::Marker::ADD;
   aircraft_.pose.position.x = 0.0;

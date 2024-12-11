@@ -50,7 +50,6 @@ void TrajectoryFollower::update_gains()
 
   // Calculate max accelerations. 
   double equilibrium_throttle = params.get_double("equilibrium_throttle");
-  double mass = params.get_double("mass");
   double g = params.get_double("gravity");
   max_accel_xy_ = sin(acos(equilibrium_throttle)) * g
         / equilibrium_throttle; // This assumes that the minimum vehicle-1 frame z acceleration is 1g
@@ -80,9 +79,6 @@ roscopter_msgs::msg::ControllerCommand TrajectoryFollower::manage_trajectory(ros
   double g = params.get_double("gravity");
   double max_roll = params.get_double("max_roll") * M_PI / 180.0;
   double max_pitch = params.get_double("max_pitch") * M_PI / 180.0;
-  double equilibrium_throttle = params.get_double("equilibrium_throttle");
-  double max_throttle = params.get_double("max_throttle");
-  double min_throttle = params.get_double("min_throttle");
 
   dt_ = dt;
   if (dt_ < 0.0000001) {
@@ -102,15 +98,11 @@ roscopter_msgs::msg::ControllerCommand TrajectoryFollower::manage_trajectory(ros
   double theta_cmd_unsat = -u_n*cos(xhat_.psi)/g - u_e*sin(xhat_.psi)/g;
   double thrust_cmd = mass * (g - u_d);
 
-  // Convert thrust command to throttle setting
-  double throttle_setting = thrust_cmd * equilibrium_throttle / (mass * g);
-
   // Construct output
   output_cmd_.mode = roscopter_msgs::msg::ControllerCommand::MODE_ROLL_PITCH_YAW_THRUST_TO_MOTOR;
   output_cmd_.cmd1 = saturate(phi_cmd_unsat, max_roll, -max_roll);
   output_cmd_.cmd2 = saturate(theta_cmd_unsat, max_pitch, -max_pitch);
   output_cmd_.cmd3 = wrap_within_180(0.0, input_cmd.psi_cmd);
-  // output_cmd_.cmd4 = saturate(throttle_setting, max_throttle, min_throttle);
   output_cmd_.cmd4 = thrust_cmd;
 
   output_cmd_.cmd_valid = true;
@@ -146,7 +138,6 @@ double TrajectoryFollower::east_control(double pe_cmd, double pe_dot_cmd, double
 {
   double C_d = params.get_double("C_d");
   double g = params.get_double("gravity");
-  double max_descend_accel = params.get_double("max_descend_accel");
 
   // East control effort - Eq. 14.34. Note the negative velocity passed to the PID object
   double pe_dot_tilde = pe_dot_cmd - xhat_.v_e;

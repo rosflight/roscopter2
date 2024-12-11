@@ -39,13 +39,13 @@ PathPlanner::PathPlanner()
   state_subscription_ = this->create_subscription<roscopter_msgs::msg::State>(
     "estimated_state", 10, std::bind(&PathPlanner::state_callback, this, _1));
 
-  // Set the parameter callback, for when parameters are changed.
-  parameter_callback_handle_ = this->add_on_set_parameters_callback(
-    std::bind(&PathPlanner::parametersCallback, this, std::placeholders::_1));
-
   // Declare parameters with ROS2 and save them to the param_manager object
   declare_parameters();
   params_.set_parameters();
+
+  // Set the parameter callback, for when parameters are changed.
+  parameter_callback_handle_ = this->add_on_set_parameters_callback(
+    std::bind(&PathPlanner::parametersCallback, this, std::placeholders::_1));
 
   num_waypoints_published_ = 0;
 
@@ -62,7 +62,7 @@ PathPlanner::~PathPlanner() {}
 void PathPlanner::publish_initial_waypoints()
 {
   int num_waypoints_to_publish_at_start =
-    this->get_parameter("num_waypoints_to_publish_at_start").as_int();
+    params_.get_int("num_waypoints_to_publish_at_start");
 
   RCLCPP_INFO_STREAM_ONCE(this->get_logger(),
                           "Path Planner will publish the first {"
@@ -195,7 +195,6 @@ bool PathPlanner::clear_path()
   }
 
   // Otherwise, clear the internal waypoint list and reset the number of published waypoints
-  RCLCPP_INFO_STREAM(this->get_logger(), "Testing!");
   wps_.clear();
   num_waypoints_published_ = 0;
   return true;
@@ -317,6 +316,9 @@ PathPlanner::parametersCallback(const std::vector<rclcpp::Parameter> & parameter
   if (success) {
     result.successful = true;
     result.reason = "success";
+  
+    // if successful, check if we need to publish the next waypoints
+    publish_initial_waypoints();
   }
 
   return result;

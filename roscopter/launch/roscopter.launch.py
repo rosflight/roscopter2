@@ -37,11 +37,18 @@ def generate_launch_description():
         #     executable='ekf_node',
         #     name='estimator'
         # )
-        # Node(
-        #     package='roscopter',
-        #     executable='path_manager',
-        #     name='path_manager',
-        #     output='screen',
-        #     remappings=[('estimated_state', 'state')]
-        # ),
+        Node(
+            package='roscopter',
+            executable='path_manager',
+            name='path_manager',
+            output='screen',
+            remappings=[('estimated_state', 'state')]
+        ),
+        Node(
+            package='roscopter',
+            executable='path_planner',
+            name='path_planner',
+            output='screen',
+            remappings=[('estimated_state', 'state')]
+        ),
     ])
