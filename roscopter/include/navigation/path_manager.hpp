@@ -29,8 +29,8 @@ private:
 
   // Member variables
   rclcpp::TimerBase::SharedPtr hold_timer_;
-  bool timer_started_;
-  int current_wp_index_;
+  bool timer_started_ = false;
+  int current_wp_index_ = 0;
 };
 
 } // namespace roscopter

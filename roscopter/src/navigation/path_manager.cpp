@@ -11,8 +11,6 @@ double dist(std::array<float, 3> array1, std::array<float, 3> array2)
 
 PathManager::PathManager() 
   : PathManagerROS()
-  , current_wp_index_(0)
-  , timer_started_(false)
 {
   declare_params();
 }
